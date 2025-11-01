@@ -1,18 +1,21 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useEffect } from 'react'
-import { useAuth } from '@/contexts/authContext'
+import Button from '@/components/Button';
+import ConversationItem from '@/components/ConversationItem';
+import Loading from '@/components/Loading';
 import ScreenWrapper from '@/components/ScreenWrapper';
 import Typo from '@/components/Typo';
 import { colors, radius, spacingX, spacingY } from '@/constant/theme';
-import Button from '@/components/Button';
-import { testSocket } from '@/sockets/socketEvents';
+import { useAuth } from '@/contexts/authContext';
 import { verticalScale } from '@/utils/styling';
-import * as Icons from 'phosphor-react-native';
 import { useRouter } from 'expo-router';
+import * as Icons from 'phosphor-react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const home = () => {
   const { user:currentUser,signOut } = useAuth();
 const router= useRouter();
+const [selectedTab, setSelectedTab] = useState(0);
+const [loading, setLoading] = useState(false);
   // useEffect(()=>{
   //   testSocket(testSocketCallbackHandler);
   //   testSocket(null);
@@ -25,6 +28,56 @@ const router= useRouter();
   // const testSocketCallbackHandler=(data:any)=>{
   //   console.log("got Data from testSocket event: ",data);
   // }
+
+  const conversations =[
+    {
+      name:'John Doe',
+      type:'direct',
+      lastMessage:{
+        senderName:'John Doe',
+        content:'Hey! How are you?',
+        createdAt:"2025-01-01T14:30:00Z"
+      },
+    },
+    {
+      name:'Jane Smith',
+      type:'direct',
+      lastMessage:{
+        senderName:'Jane Smith',
+        content:'Let\'s catch up later.',
+        createdAt:"2025-01-06T14:30:00Z"
+      },
+    },
+    {
+      name:'Mike Johnson',
+      type:'direct',
+      lastMessage:{
+        senderName:'Mike Johnson',
+        content:'Did you see the game?',
+        createdAt:"2025-01-03T14:30:00Z"
+      },
+    },
+    {
+      name:'Project Team',
+      type:'group',
+      lastMessage:{
+        senderName:'Mike Johnson',
+        content:'Did you see the game?',
+        createdAt:"2025-01-01T14:30:00Z"
+      },
+    }
+  ]
+
+  let directMessages = conversations.filter((c:any)=>c.type=='direct').sort((a:any,b:any)=>{
+    const dateA = a?.lastMessage?.createdAt || a.createdAt;
+    const dateB = b?.lastMessage?.createdAt || b.createdAt;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
+  let groupChats = conversations.filter((c:any)=>c.type=='group').sort((a:any,b:any)=>{
+    const dateA = a?.lastMessage?.createdAt || a.createdAt;
+    const dateB = b?.lastMessage?.createdAt || b.createdAt;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
 
   const handleLogout = async () => {
     await signOut();
@@ -52,9 +105,52 @@ const router= useRouter();
         </View>
 
         <View style={styles.content}>
-
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingVertical:spacingY._20}}>
+            <View style={styles.navBar}>
+              <View style={styles.tabs}>
+                <TouchableOpacity onPress={()=>setSelectedTab(0)} style={[styles.tabStyle, selectedTab == 0 && styles.activeTabStyle]}>
+                  <Typo>Direct Messages</Typo>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={()=>setSelectedTab(1)} style={[styles.tabStyle, selectedTab == 1 && styles.activeTabStyle]}>
+                  <Typo>Group Chats</Typo>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.conversationList}>
+              {
+              selectedTab == 0 && directMessages.map((conversation:any, index)=>{
+                return (
+                  <ConversationItem key={index} item={conversation} router={router} showDivider={directMessages.length !== index + 1} />
+                )
+              })
+              }
+              {
+              selectedTab == 1 && groupChats.map((conversation:any, index)=>{
+                return (
+                  <ConversationItem key={index} item={conversation} router={router} showDivider={groupChats.length !== index + 1} />
+                )
+              })
+              }
+            </View>
+            {
+              !loading && directMessages.length == 0 && selectedTab == 0 && (
+                <Typo style={{textAlign:'center'}}>You don't have any Messages.</Typo>
+              )
+            }
+            {
+              !loading && groupChats.length == 0 && selectedTab == 1 && (
+                <Typo style={{textAlign:'center'}}>You haven't joined any groups.</Typo>
+              )
+            }
+            {
+              loading && <Loading/>
+            }
+          </ScrollView>
         </View>
       </View>
+      <Button style={styles.floatingButton} onPress={()=>router.push({pathname:'/(main)/newConversationModel',params:{isGroup:selectedTab}})}>
+        <Icons.PlusIcon color={colors.black} weight='bold' size={verticalScale(24)} />
+      </Button>
     </ScreenWrapper>
   )
 }

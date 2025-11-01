@@ -1,7 +1,7 @@
-import { View, Text, Platform, Dimensions, ImageBackground, StatusBar, useColorScheme } from 'react-native'
-import React from 'react'
-import { ScreenWrapperProps } from '@/types'
 import { colors } from '@/constant/theme';
+import { ScreenWrapperProps } from '@/types';
+import React from 'react';
+import { Dimensions, ImageBackground, Platform, StatusBar, useColorScheme, View } from 'react-native';
 
 const {height} = Dimensions.get('window');
 
@@ -37,7 +37,7 @@ const ScreenWrapper = ({
       },
         style
       ]}>
-        <StatusBar  barStyle={scheme === "dark" ? "light-content" : "dark-content"} backgroundColor={"transparent"}
+        <StatusBar  barStyle={scheme === "dark" ? "light-content" : "dark-content"} backgroundColor={scheme === "dark" ? colors.neutral900 : "#fff"}
 />
         {children}
       </View>
