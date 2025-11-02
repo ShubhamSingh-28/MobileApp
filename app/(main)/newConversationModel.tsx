@@ -7,28 +7,90 @@ import ScreenWrapper from '@/components/ScreenWrapper';
 import Typo from '@/components/Typo';
 import { colors, radius, spacingX, spacingY } from '@/constant/theme';
 import { useAuth } from '@/contexts/authContext';
+import { uploadFileToCloudinary } from '@/services/imageSevice';
+import { getContacts, newConversation } from '@/sockets/socketEvents';
 import { verticalScale } from '@/utils/styling';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const newConversationModel = () => {
   const {isGroup} = useLocalSearchParams();
   const isGroupMode = isGroup =='1';
+  //console.log(isGroupMode);
+  
   const router = useRouter();
   const [groupAvatar,setGroupAvatar]=useState<{uri:string} | null>(null);
   const [groupName,setGroupName]=useState('');
   const [selectedParticipants,setSelectedParticipants]=useState<String[]>([]);
   const {user: currentUser} = useAuth();
   const [isLoading,setIsLoading]=useState(false);
+  const [contacts,setContacts]=useState([]);
 
-  const createGroup =()=>{
+  useEffect(()=>{
+    // Fetch contacts from your API or data source
+    getContacts(processGetContacts);
+    newConversation(processNewConversations);
+    getContacts(null)
+    return ()=>{
+      getContacts(processGetContacts,true);
+      newConversation(processNewConversations,true);
+    }
+  },[])
+
+  const processGetContacts= (res:any)=>{
+    if (res.success) {
+      setContacts(res.data);
+    }
+  }
+  const processNewConversations= (res:any)=>{
+    console.log("new conversation res",res.data.participants);
+    setIsLoading(false);
+    if (res.success) {
+      router.back();
+      router.push({
+        pathname: '/(main)/conversation',
+        params: {
+          id: res.data._id,
+          name: res.data.name,
+          avatar: res.data.avatar,
+          type: res.data.type,
+          participants: JSON.stringify(res.data.participants),
+        }
+      })
+    }else{
+      Alert.alert('Error',res.msg);
+    }
+    
+  }
+
+  const createGroup =async()=>{
     if(!groupName.trim() || selectedParticipants.length<2){
       return;
     }
     setIsLoading(true);
     // Call your API to create the group
+    try {
+      let avatar = null;
+      if(groupAvatar){
+        const uploadResult = await uploadFileToCloudinary(groupAvatar,"group-avatars");
+        if(uploadResult.success){
+          avatar = uploadResult.data;
+        }
+      }
+      newConversation({
+        type:"group",
+        name:groupName,
+        avatar,
+        participants: [currentUser?.id, ...selectedParticipants],
+      });
+    } catch (error:any) {
+      console.log("Error",error);
+      Alert.alert('Error',error.message || 'Failed to create group.');
+    }finally{
+      setIsLoading(false);
+    }
   }
 
    const onPickImage= async()=>{
@@ -45,10 +107,10 @@ const newConversationModel = () => {
     }
     const toggleParticipant= (user:any)=>{
       setSelectedParticipants((prev:any)=>{
-        if(prev.includes(user.id)){
-          return prev.filter((id:any)=>id !== user.id);
+        if(prev.includes(user._id)){
+          return prev.filter((id:any)=>id !== user._id);
         }
-        return [...prev, user.id];
+        return [...prev, user._id];
       })
     }
     const onSelectUser= (user:any)=>{
@@ -59,32 +121,35 @@ const newConversationModel = () => {
       if(isGroupMode){
         toggleParticipant(user)
       } else{
-
+        newConversation({
+          type:"direct",
+          participants:[currentUser.id, user._id],
+        });
       }
     }
 
-  const contacts=[
-    {
-      id:'1',
-      name:'John Doe',
-      avatar:'https://i.pravatar.cc/150?img=1'
-    },
-    {
-      id:'2',
-      name:'Jane Smith',
-      avatar:'https://i.pravatar.cc/150?img=2'
-    },
-    {
-      id:'3',
-      name:'Alice Johnson',
-      avatar:'https://i.pravatar.cc/150?img=3'
-    },
-    {
-      id:'4',
-      name:'Bob Brown',
-      avatar:'https://i.pravatar.cc/150?img=4'
-    }
-  ]
+  // const contacts=[
+  //   {
+  //     id:'1',
+  //     name:'John Doe',
+  //     avatar:'https://i.pravatar.cc/150?img=1'
+  //   },
+  //   {
+  //     id:'2',
+  //     name:'Jane Smith',
+  //     avatar:'https://i.pravatar.cc/150?img=2'
+  //   },
+  //   {
+  //     id:'3',
+  //     name:'Alice Johnson',
+  //     avatar:'https://i.pravatar.cc/150?img=3'
+  //   },
+  //   {
+  //     id:'4',
+  //     name:'Bob Brown',
+  //     avatar:'https://i.pravatar.cc/150?img=4'
+  //   }
+  // ]
   return (
     <ScreenWrapper isModal={true} >
       <View style={styles.container}>
@@ -103,7 +168,7 @@ const newConversationModel = () => {
         )}
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.contactList}>
           {contacts.map((user:any ,index)=>{
-            const isSelected = selectedParticipants.includes(user.id);
+            const isSelected = selectedParticipants.includes(user._id);
             return (
               <TouchableOpacity onPress={() => onSelectUser(user)} key={index} style={[ styles.contactRow, isSelected && styles.selectedContact ]}>
                 <Avatar uri={user.avatar} size={45} />
