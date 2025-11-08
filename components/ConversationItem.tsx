@@ -8,10 +8,9 @@ import { ConversationListItemProps } from '@/types'
 import { useAuth } from '@/contexts/authContext'
 
 const ConversationItem = ({item,router,showDivider}:ConversationListItemProps) => {
-    const openConversation=()=>{}
-
+    
     const {user:currentUser} = useAuth();
-    console.log("Conversation item", item);
+    //console.log("Conversation item", item);
     
     const lastMessage:any = item.lastMessage;
     const isDirectMessage = item.type === 'direct';
@@ -43,6 +42,19 @@ const ConversationItem = ({item,router,showDivider}:ConversationListItemProps) =
            return messageDate.format('MMM D');
        }
        return messageDate.format('MMM D, YYYY');
+    }
+
+    const openConversation=()=>{
+        router.push({
+            pathname:"/(main)/conversation",
+            params:{
+                id:item._id,
+                name:item.name,
+                avatar:item.avatar,
+                type:item.type,
+                participants:JSON.stringify(item.participants),
+            }
+        });
     }
   return (
     <View>
