@@ -89,3 +89,18 @@ export const newMessage = (payload: any, off: boolean = false) => {
         socket.emit("newMessage", payload);
     }
 }
+
+export const getMessages = (payload: any, off: boolean = false) => {
+    const socket = getSocket();
+    if(!socket){
+        console.log("Socket not connected");
+        return;
+    }
+    if(off){
+        socket.off("getMessages");
+    } else if(typeof payload == "function"){
+        socket.on("getMessages", payload);
+    }else{
+        socket.emit("getMessages", payload);
+    }
+}

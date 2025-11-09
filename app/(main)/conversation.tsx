@@ -16,14 +16,16 @@ import * as ImagePicker from 'expo-image-picker'
 import { Image } from 'expo-image'
 import Loading from '@/components/Loading'
 import { uploadFileToCloudinary } from '@/services/imageSevice'
-import { newMessage } from '@/sockets/socketEvents'
-import { ResponseProps } from '@/types'
+import { getMessages, newMessage } from '@/sockets/socketEvents'
+import { MessageProps, ResponseProps } from '@/types'
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry'
 
 const conversation = () => {
   const { user:currentUser } = useAuth();
   const { id, name, avatar, type, participants:stringifyParticipants } = useLocalSearchParams()
   //console.log('data', data)
 const [message, setMessage] = useState('');
+const [messages, setMessages] = useState<MessageProps[]>([]);
 const [loading, setLoading] = useState(false);
 const [selectedFile, setselectedFile] = useState<{uri:string} | null>(null);
   const participants = JSON.parse(stringifyParticipants as string);
@@ -37,40 +39,34 @@ const [selectedFile, setselectedFile] = useState<{uri:string} | null>(null);
 
   useEffect(() => {
     newMessage(newMessageHandler);
+    getMessages(messageHandler);
+
+    getMessages({ conversationId: id });
     return () => {
       newMessage(newMessageHandler, true); // Unsubscribe from the event on cleanup
+      getMessages(messageHandler, true);
     };
   }, [])
+
+  const messageHandler = (data: ResponseProps) => {
+    if(data.success){
+      setMessages(data.data);
+    }
+  }
+
   const newMessageHandler = (data: ResponseProps) => {
     setLoading(false);
-    setMessage('');
+    console.log(data,"new message");
     // Here you can update your state or perform any action when a new message is received
+    if(data.success){
+      if (data.data.conversationId == id) {
+        setMessages((prevMessages) => [data.data as MessageProps, ...prevMessages]);
+      }
+    }else{
+      Alert.alert("Error",data.msg);
+    }
   }
   
-  const dummyMessages=[ 
-    {
-      id: 'msg_10',
-      content:'Hello!',
-      sender: {
-        id:"user_2",
-        name:"Jane",
-        avatar:null
-      },
-      isMe:false,
-      createdAt :"10:42 AM"
-    },
-     {
-      id: 'msg_9',
-      content:'What happend!',
-      sender: {
-        id:"me",
-        name:"me",
-        avatar:null
-      },
-      isMe:true,
-      createdAt :"10:41 AM"
-    },
-  ]
    const onPickFile= async()=>{
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes:['images','videos'],
@@ -139,7 +135,7 @@ const [selectedFile, setselectedFile] = useState<{uri:string} | null>(null);
         />
 
         <View style={styles.content}>
-          <FlatList data={dummyMessages} inverted={true} showsVerticalScrollIndicator={false} contentContainerStyle={styles.messageContent}
+          <FlatList data={messages} inverted={true} showsVerticalScrollIndicator={false} contentContainerStyle={styles.messageContent}
             renderItem={({item})=>(
             <MessageItem item={item} isDirect={isDirectMessage}/>
           )}

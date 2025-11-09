@@ -5,7 +5,7 @@ import ScreenWrapper from '@/components/ScreenWrapper';
 import Typo from '@/components/Typo';
 import { colors, radius, spacingX, spacingY } from '@/constant/theme';
 import { useAuth } from '@/contexts/authContext';
-import { getConversations, newConversation } from '@/sockets/socketEvents';
+import { getConversations, newConversation, newMessage } from '@/sockets/socketEvents';
 import { ConversationProps, ResponseProps } from '@/types';
 import { verticalScale } from '@/utils/styling';
 import { useRouter } from 'expo-router';
@@ -24,13 +24,30 @@ useEffect(()=>{
   getConversations(processConversations);
   newConversation(newConvHandler);
 
+  newMessage(newMessageHandler);
+
   getConversations(null)
   return()=>{
     getConversations(processConversations,true);
     newConversation(newConvHandler,true);
+    newMessage(newMessageHandler,true);
   }
 },[])
 
+const newMessageHandler=(data:ResponseProps)=>{
+  if(data.success){
+    let conversationId = data.data.conversationId;
+    setConversations((prev)=>{
+      let updated = prev.map((conv)=>{
+        if(conv._id == conversationId){
+          conv.lastMessage = data.data;
+        }
+        return conv;
+      })
+      return updated;
+    })
+  }
+}
 const newConvHandler=(data:ResponseProps)=>{
   console.log("got new conversation data: ",data);
   if(data.success && data.data?.isNew){

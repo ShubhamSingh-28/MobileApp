@@ -12,7 +12,9 @@ const ConversationItem = ({item,router,showDivider}:ConversationListItemProps) =
     const {user:currentUser} = useAuth();
     //console.log("Conversation item", item);
     
-    const lastMessage:any = item.lastMessage;
+    const lastMessage = item.lastMessage;
+    console.log("last",lastMessage);
+    
     const isDirectMessage = item.type === 'direct';
     let avatar =item.avatar;
     const otherParticipant = isDirectMessage ? item.participants.find(p => p._id !== currentUser?.id) : null;
@@ -27,6 +29,9 @@ const ConversationItem = ({item,router,showDivider}:ConversationListItemProps) =
 
         return lastMessage?.attachment ? "Image" : lastMessage.content;
     }
+
+    
+    
 
     const getLastMessageDate=()=>{
        if (!lastMessage?.createdAt) return null;
